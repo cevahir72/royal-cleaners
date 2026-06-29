@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import CursorFollower from "@/components/CursorFollower";
+
 
 const inter = Inter({
   subsets: ["latin"],
@@ -26,7 +28,10 @@ export default function RootLayout({
           rel="stylesheet"
         />
       </head>
-      <body className="overflow-x-hidden antialiased">{children}</body>
+      <body className="overflow-x-hidden antialiased">
+        {children}
+        <CursorFollower />
+      </body>
     </html>
   );
 }

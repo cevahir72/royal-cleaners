@@ -96,17 +96,6 @@ body {
   );
 }
 
-.stepper-line {
-  height: 2px;
-  flex-grow: 1;
-  background-color: #e4e2e1;
-  margin-top: 1.25rem;
-}
-
-.stepper-line.active {
-  background-color: #002045;
-}
-
 .brushed-gold-gradient {
   background: linear-gradient(135deg, #e9c176 0%, #775a19 100%);
 }
