@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
+import Script from "next/script";
 import "./globals.css";
 import CursorFollower from "@/components/CursorFollower";
 
@@ -31,6 +32,12 @@ export default function RootLayout({
       <body className="overflow-x-hidden antialiased">
         {children}
         <CursorFollower />
+        <Script
+          src="https://widgets.leadconnectorhq.com/loader.js"
+          data-resources-url="https://widgets.leadconnectorhq.com/chat-widget/loader.js"
+          data-widget-id="69c2edc76c92dc1c07226fdf"
+          strategy="lazyOnload"
+        />
       </body>
     </html>
   );
