@@ -12,7 +12,7 @@ export default function AdminDashboard() {
   const [formKey, setFormKey] = useState(0);
   const formScriptRef = useRef(false);
 
-  const fetchLastReceipt = useRef<() => void>();
+  const fetchLastReceipt = useRef<() => void>(() => {});
 
   useEffect(() => {
     let cancelled = false;
