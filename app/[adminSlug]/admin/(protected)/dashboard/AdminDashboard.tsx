@@ -12,10 +12,12 @@ export default function AdminDashboard() {
   const [formKey, setFormKey] = useState(0);
   const formScriptRef = useRef(false);
 
+  const fetchLastReceipt = useRef<() => void>();
+
   useEffect(() => {
     let cancelled = false;
 
-    async function fetchLastReceipt() {
+    async function fetchData() {
       try {
         const res = await fetch(
           "https://royal-cleaners-backend.vercel.app/api/order/last-receipt"
@@ -33,7 +35,12 @@ export default function AdminDashboard() {
       }
     }
 
-    fetchLastReceipt();
+    fetchLastReceipt.current = () => {
+      setLoadingReceipt(true);
+      fetchData();
+    };
+
+    fetchLastReceipt.current();
 
     return () => { cancelled = true; };
   }, []);
@@ -64,6 +71,7 @@ export default function AdminDashboard() {
         /submit/i.test(type)
       ) {
         setFormSubmitted(true);
+        fetchLastReceipt.current?.();
       }
     }
 
@@ -156,6 +164,13 @@ export default function AdminDashboard() {
                 >
                   <span className="material-symbols-outlined text-[20px]">add_circle</span>
                   <span>Click for New Order</span>
+                </button>
+                <button
+                  onClick={() => fetchLastReceipt.current?.()}
+                  className="flex items-center gap-2 mt-4 text-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer bg-transparent border-none underline-offset-2 hover:underline"
+                >
+                  <span className="material-symbols-outlined text-[16px]">refresh</span>
+                  <span>Refresh page data</span>
                 </button>
               </motion.div>
             ) : (
