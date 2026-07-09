@@ -33,9 +33,9 @@ const stageColors = [
 
 function mapStatusToStage(status: string): number {
   const s = status.toLowerCase().trim();
-  if (s.includes("received") || s.includes("alındı") || s.includes("sipariş")) return 0;
-  if (s.includes("progress") || s.includes("işleniyor") || s.includes("process")) return 1;
-  if (s.includes("ready") || s.includes("hazır") || s.includes("pickup") || s.includes("teslim")) return 2;
+  if (s.includes("received")) return 0;
+  if (s.includes("progress") || s.includes("process")) return 1;
+  if (s.includes("ready") || s.includes("pickup")) return 2;
   return 1;
 }
 
@@ -130,15 +130,14 @@ function TrackingForm() {
         const data = await res.json();
 
         if (!res.ok || data.error) {
-          const msg = data.error || "Order not found. Please check your details and try again.";
-          setError(msg);
+          setError("Order not found. Please check your details and try again.");
           setSearching(false);
           setQueryDone(true);
           return;
         }
 
         const stageIndex = mapStatusToStage(data.status);
-        setResult(`Order ${data.receiptId} — ${data.status}`);
+        setResult(`Order ${data.receiptId} — ${stages[stageIndex].label}`);
         setActiveStage(stageIndex);
 
         if (buttonRef.current) {
