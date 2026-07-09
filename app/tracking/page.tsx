@@ -31,12 +31,20 @@ const stageColors = [
   { bg: "#22c55e", light: "#bbf7d0", ring: "rgba(34,197,94,0.35)" },
 ];
 
-function mapStatusToStage(status: string): number {
-  const s = status.toLowerCase().trim();
-  if (s.includes("received")) return 0;
-  if (s.includes("progress") || s.includes("process")) return 1;
-  if (s.includes("ready") || s.includes("pickup")) return 2;
-  return 1;
+function findStageIndex(
+  pipelineStageId: string,
+  stages: { id: string; name: string }[]
+): number {
+  const stage = stages.find((s) => s.id === pipelineStageId);
+  if (!stage) return 1;
+  const nameMap: Record<string, number> = {
+    "New Lead": 0,
+    "Order Taken": 0,
+    "In Progress": 1,
+    "Ready for Pickup": 2,
+    Completed: 2,
+  };
+  return nameMap[stage.name] ?? 1;
 }
 
 interface ConfettiParticle {
@@ -136,7 +144,7 @@ function TrackingForm() {
           return;
         }
 
-        const stageIndex = mapStatusToStage(data.status);
+        const stageIndex = findStageIndex(data.pipelineStageId, data.stages);
         setResult(`Order ${data.receiptId} — ${stages[stageIndex].label}`);
         setActiveStage(stageIndex);
 
