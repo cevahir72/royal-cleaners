@@ -166,11 +166,11 @@ export default function AdminDashboard() {
                   <span>Click for New Order</span>
                 </button>
                 <button
-                  onClick={() => fetchLastReceipt.current?.()}
-                  className="flex items-center gap-2 mt-4 text-sm text-on-surface-variant hover:text-primary transition-colors cursor-pointer bg-transparent border-none underline-offset-2 hover:underline"
+                  onClick={() => window.location.reload()}
+                  className="flex items-center gap-2 bg-secondary/10 text-secondary px-8 py-4 rounded-DEFAULT font-button text-button uppercase tracking-wider transition-all hover:bg-secondary/20 active:scale-95 cursor-pointer border border-secondary/20"
                 >
-                  <span className="material-symbols-outlined text-[16px]">refresh</span>
-                  <span>Refresh page data</span>
+                  <span className="material-symbols-outlined text-[20px]">refresh</span>
+                  <span>Refresh Page</span>
                 </button>
               </motion.div>
             ) : (
