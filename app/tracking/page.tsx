@@ -31,6 +31,13 @@ const stageColors = [
   { bg: "#22c55e", light: "#bbf7d0", ring: "rgba(34,197,94,0.35)" },
 ];
 
+function mapStatusToStage(status: string): number {
+  const s = status.toLowerCase().trim();
+  if (s.includes("received") || s.includes("alındı") || s.includes("sipariş")) return 0;
+  if (s.includes("progress") || s.includes("işleniyor") || s.includes("process")) return 1;
+  if (s.includes("ready") || s.includes("hazır") || s.includes("pickup") || s.includes("teslim")) return 2;
+  return 1;
+}
 
 interface ConfettiParticle {
   size: number;
@@ -61,7 +68,9 @@ function generateConfetti(originX: number, originY: number): ConfettiParticle[] 
 
 function TrackingForm() {
   const [searching, setSearching] = useState(false);
+  const [queryDone, setQueryDone] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [activeStage, setActiveStage] = useState(-1);
   const [confetti, setConfetti] = useState<ConfettiParticle[] | null>(null);
   const [email, setEmail] = useState("");
@@ -82,36 +91,71 @@ function TrackingForm() {
   const isCompleted = (i: number) => i < activeStage;
   const isCurrent = (i: number) => i === activeStage;
 
-  const handleSubmit = useCallback(
-    (e: React.FormEvent<HTMLFormElement>) => {
-      e.preventDefault();
-      const isDemo =
-        email.trim().toLowerCase() === "name@example.com" &&
-        orderId.trim().toUpperCase() === "RC-1024";
+  const handleNewQuery = useCallback(() => {
+    setQueryDone(false);
+    setResult(null);
+    setError(null);
+    setActiveStage(-1);
+    setConfetti(null);
+    setEmail("");
+    setOrderId("");
+  }, []);
 
-      if (!isDemo) return;
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent<HTMLFormElement>) => {
+      e.preventDefault();
+
+      const trimmedEmail = email.trim();
+      const trimmedId = orderId.trim().toUpperCase();
+
+      if (!trimmedEmail || !trimmedId) return;
 
       setSearching(true);
       setResult(null);
+      setError(null);
       setActiveStage(-1);
       setConfetti(null);
+      setQueryDone(false);
 
-      setTimeout(() => {
-        setSearching(false);
-        setActiveStage(1);
-        setResult(
-          "Order RC-1024 found. Status: Your garments are currently being processed at our Mayfair atelier."
+      try {
+        const res = await fetch(
+          process.env.NEXT_PUBLIC_ORDER_STATUS_URL!,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ email: trimmedEmail, receiptId: trimmedId }),
+          }
         );
+
+        const data = await res.json();
+
+        if (!res.ok || data.error) {
+          const msg = data.error || "Order not found. Please check your details and try again.";
+          setError(msg);
+          setSearching(false);
+          setQueryDone(true);
+          return;
+        }
+
+        const stageIndex = mapStatusToStage(data.status);
+        setResult(`Order ${data.receiptId} — ${data.status}`);
+        setActiveStage(stageIndex);
+
         if (buttonRef.current) {
           const rect = buttonRef.current.getBoundingClientRect();
           setConfetti(
-            generateConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2),
+            generateConfetti(rect.left + rect.width / 2, rect.top + rect.height / 2)
           );
+          setTimeout(() => setConfetti(null), 4000);
         }
-        setTimeout(() => setConfetti(null), 4000);
-      }, 1500);
+      } catch {
+        setError("Unable to connect. Please check your connection and try again.");
+      } finally {
+        setSearching(false);
+        setQueryDone(true);
+      }
     },
-    [email, orderId],
+    [email, orderId]
   );
 
   const handleMouseMove = useCallback(
@@ -123,7 +167,7 @@ function TrackingForm() {
       mouseX.set(x * 2 - 1);
       mouseY.set(y * 2 - 1);
     },
-    [mouseX, mouseY],
+    [mouseX, mouseY]
   );
 
   const handleMouseLeave = useCallback(() => {
@@ -169,19 +213,21 @@ function TrackingForm() {
                 onChange={(e) => setEmail(e.target.value)}
                 required
                 type="email"
+                disabled={searching}
               />
             </div>
             <div className="space-y-2">
               <label className="font-label-caps text-label-caps text-on-surface-variant">
-                RECEIPT NUMBER / ORDER ID
+                RECEIPT NUMBER
               </label>
               <input
                 className="w-full bg-transparent border-0 border-b border-outline-variant focus:ring-0 focus:border-primary transition-colors py-3 px-0 font-body-md text-on-surface uppercase placeholder:text-on-surface-variant/50 outline-none"
-                placeholder="RC-1024"
+                placeholder="RC-10009"
                 value={orderId}
                 onChange={(e) => setOrderId(e.target.value)}
                 required
                 type="text"
+                disabled={searching}
               />
             </div>
           </div>
@@ -223,7 +269,7 @@ function TrackingForm() {
                 </motion.svg>
                 SEARCHING...
               </motion.span>
-            ) : result ? (
+            ) : queryDone && !error ? (
               <motion.span
                 key="success"
                 className="flex items-center justify-center gap-2"
@@ -254,115 +300,158 @@ function TrackingForm() {
       </form>
 
       <AnimatePresence>
-        {activeStage >= 0 && (
+        {(activeStage >= 0 || error) && (
           <motion.div
-            key="stepper-section"
+            key="result-section"
             initial={{ y: 60, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 60, opacity: 0 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            <div className="mt-16 border-t border-outline-variant/30 pt-12">
-              <div className="flex items-start w-full">
-                {stages.map((stage, i) => (
-                  <Fragment key={stage.label}>
-                    <div className="flex flex-col items-center flex-[0_0_auto]">
-                      <motion.div
-                        className="w-12 h-12 rounded-full flex items-center justify-center relative z-10"
-                        style={{
-                          backgroundColor:
-                            isCompleted(i)
-                              ? stageColors[i].light
-                              : isCurrent(i)
-                                ? stageColors[i].bg
-                                : "var(--color-surface-container-high, #eae9e8)",
-                          color:
-                            isCompleted(i)
-                              ? stageColors[i].bg
-                              : isCurrent(i)
-                                ? "#ffffff"
-                                : "var(--color-outline, #857b76)",
-                        }}
-                        animate={
-                          isCurrent(i)
-                            ? {
-                                scale: [1, 1.15, 1],
-                                boxShadow: [
-                                  `0 0 8px ${stageColors[i].ring}`,
-                                  `0 0 20px ${stageColors[i].ring}`,
-                                  `0 0 8px ${stageColors[i].ring}`,
-                                ],
-                              }
-                            : isCompleted(i)
-                              ? { boxShadow: `0 0 8px ${stageColors[i].ring}` }
-                              : {}
-                        }
-                        transition={
-                          isCurrent(i)
-                            ? {
-                                scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                                boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
-                              }
-                            : { duration: 0.4 }
-                        }
-                      >
-                        <span
-                          className="material-symbols-outlined"
-                          style={
-                            isCurrent(i) || isCompleted(i)
-                              ? { fontVariationSettings: "'FILL' 1" }
-                              : undefined
-                          }
-                        >
-                          {isCompleted(i) ? "check" : stage.icon}
-                        </span>
-                      </motion.div>
-                      <span
-                        className={`font-label-caps text-[10px] text-center mt-3 max-w-[80px] leading-tight ${
-                          isCurrent(i) || isCompleted(i)
-                            ? "text-primary"
-                            : "text-on-surface-variant opacity-60"
-                        }`}
-                      >
-                        {stage.label}
-                      </span>
-                    </div>
-                    {i < stages.length - 1 && (
-                      <div
-                        className="flex-1 h-[2px] relative mx-4"
-                        style={{ marginTop: "22px" }}
-                      >
-                        <div className="absolute inset-0 bg-outline-variant" />
-                        <motion.div
-                          className="absolute inset-y-0 left-0"
-                          style={{ backgroundColor: stageColors[i].bg }}
-                          animate={{ width: isCompleted(i) ? "100%" : "0%" }}
-                          transition={{ duration: 0.6, ease: "easeInOut" }}
-                        />
-                      </div>
-                    )}
-                  </Fragment>
-                ))}
-              </div>
-            </div>
-
-            {result && (
+            {error ? (
               <motion.div
-                className="mt-8 p-4 bg-secondary-container/30 rounded-lg border border-secondary-fixed"
+                className="mt-8 p-4 bg-error-container/40 rounded-lg border border-error/20"
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <p className="font-body-md text-body-md text-on-secondary-container">
-                  {result}
-                </p>
+                <div className="flex items-center gap-3">
+                  <span className="material-symbols-outlined text-error" style={{ fontVariationSettings: "'FILL' 1" }}>
+                    error
+                  </span>
+                  <p className="font-body-md text-body-md text-on-surface">
+                    {error}
+                  </p>
+                </div>
               </motion.div>
+            ) : (
+              <>
+                <div className="mt-16 border-t border-outline-variant/30 pt-12">
+                  <div className="flex items-start w-full">
+                    {stages.map((stage, i) => (
+                      <Fragment key={stage.label}>
+                        <div className="flex flex-col items-center flex-[0_0_auto]">
+                          <motion.div
+                            className="w-12 h-12 rounded-full flex items-center justify-center relative z-10"
+                            style={{
+                              backgroundColor:
+                                isCompleted(i)
+                                  ? stageColors[i].light
+                                  : isCurrent(i)
+                                    ? stageColors[i].bg
+                                    : "var(--color-surface-container-high, #eae9e8)",
+                              color:
+                                isCompleted(i)
+                                  ? stageColors[i].bg
+                                  : isCurrent(i)
+                                    ? "#ffffff"
+                                    : "var(--color-outline, #857b76)",
+                            }}
+                            animate={
+                              isCurrent(i)
+                                ? {
+                                    scale: [1, 1.15, 1],
+                                    boxShadow: [
+                                      `0 0 8px ${stageColors[i].ring}`,
+                                      `0 0 20px ${stageColors[i].ring}`,
+                                      `0 0 8px ${stageColors[i].ring}`,
+                                    ],
+                                  }
+                                : isCompleted(i)
+                                  ? { boxShadow: `0 0 8px ${stageColors[i].ring}` }
+                                  : {}
+                            }
+                            transition={
+                              isCurrent(i)
+                                ? {
+                                    scale: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                                    boxShadow: { duration: 2, repeat: Infinity, ease: "easeInOut" },
+                                  }
+                                : { duration: 0.4 }
+                            }
+                          >
+                            <span
+                              className="material-symbols-outlined"
+                              style={
+                                isCurrent(i) || isCompleted(i)
+                                  ? { fontVariationSettings: "'FILL' 1" }
+                                  : undefined
+                              }
+                            >
+                              {isCompleted(i) ? "check" : stage.icon}
+                            </span>
+                          </motion.div>
+                          <span
+                            className={`font-label-caps text-[10px] text-center mt-3 max-w-[80px] leading-tight ${
+                              isCurrent(i) || isCompleted(i)
+                                ? "text-primary"
+                                : "text-on-surface-variant opacity-60"
+                            }`}
+                          >
+                            {stage.label}
+                          </span>
+                        </div>
+                        {i < stages.length - 1 && (
+                          <div
+                            className="flex-1 h-[2px] relative mx-4"
+                            style={{ marginTop: "22px" }}
+                          >
+                            <div className="absolute inset-0 bg-outline-variant" />
+                            <motion.div
+                              className="absolute inset-y-0 left-0"
+                              style={{ backgroundColor: stageColors[i].bg }}
+                              animate={{ width: isCompleted(i) ? "100%" : "0%" }}
+                              transition={{ duration: 0.6, ease: "easeInOut" }}
+                            />
+                          </div>
+                        )}
+                      </Fragment>
+                    ))}
+                  </div>
+                </div>
+
+                {result && (
+                  <motion.div
+                    className="mt-8 p-4 bg-secondary-container/30 rounded-lg border border-secondary-fixed"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <p className="font-body-md text-body-md text-on-secondary-container">
+                      {result}
+                    </p>
+                  </motion.div>
+                )}
+
+                <p className="mt-12 text-center text-on-surface-variant opacity-70 font-body-md text-[14px] italic">
+                  Your status is updated in real-time. You will also receive an email
+                  notification when your clothes are ready.
+                </p>
+              </>
             )}
 
-            <p className="mt-12 text-center text-on-surface-variant opacity-70 font-body-md text-[14px] italic">
-              Your status is updated in real-time. You will also receive an email
-              notification when your clothes are ready.
-            </p>
+            <AnimatePresence>
+              {queryDone && (
+                <motion.div
+                  className="mt-8 flex justify-center"
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: 10 }}
+                  transition={{ duration: 0.3, delay: 0.2 }}
+                >
+                  <motion.button
+                    className="flex items-center gap-2 px-6 py-3 bg-primary text-on-primary font-button text-button tracking-[0.08em] hover:bg-primary-container transition-colors duration-300 shadow-md"
+                    onClick={handleNewQuery}
+                    whileTap={{ scale: 0.97 }}
+                  >
+                    <span className="material-symbols-outlined text-[18px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+                      refresh
+                    </span>
+                    NEW QUERY
+                  </motion.button>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </motion.div>
         )}
       </AnimatePresence>
