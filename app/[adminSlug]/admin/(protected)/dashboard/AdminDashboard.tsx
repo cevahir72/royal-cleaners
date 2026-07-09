@@ -55,6 +55,12 @@ export default function AdminDashboard() {
   }, []);
 
   useEffect(() => {
+    if (formSubmitted) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }, [formSubmitted]);
+
+  useEffect(() => {
     function handleMessage(event: MessageEvent) {
       const data = event.data;
       if (!data || typeof data !== "object") return;
@@ -87,6 +93,46 @@ export default function AdminDashboard() {
       />
       <AdminHeader />
       <main className="bg-surface text-on-surface font-body-md min-h-screen">
+        {/* Sticky Success Bar */}
+        {formSubmitted && (
+          <motion.div
+            className="sticky top-0 z-40 w-full bg-surface-container-lowest border-b border-secondary/20 shadow-md"
+            initial={{ y: -80, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ duration: 0.3, ease: "easeOut" }}
+          >
+            <div className="max-w-container-max mx-auto px-margin-desktop py-4">
+              <div className="flex items-center gap-3">
+                <span
+                  className="material-symbols-outlined text-[36px] text-green-500"
+                  style={{ fontVariationSettings: "'FILL' 1" }}
+                >
+                  check_circle
+                </span>
+                <div className="flex-1">
+                  <p className="font-headline-sm text-headline-sm text-primary font-semibold">
+                    Order Submitted Successfully
+                  </p>
+                  <p className="font-body-md text-body-md text-on-surface-variant mt-1">
+                    Last Order:{" "}
+                    <span className="font-semibold text-secondary">
+                      {lastOrderNumber ?? "..."}
+                    </span>
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => window.location.reload()}
+                className="mt-3 flex items-center gap-2 bg-secondary text-primary-fixed-dim px-6 py-3 rounded-DEFAULT font-button text-button uppercase tracking-wider transition-all hover:brightness-90 active:scale-95 cursor-pointer"
+              >
+                <span className="material-symbols-outlined text-[20px]">
+                  refresh
+                </span>
+                <span>Refresh Page</span>
+              </button>
+            </div>
+          </motion.div>
+        )}
         {/* Banner */}
         <section className="w-full bg-primary py-16">
           <div className="max-w-container-max mx-auto px-margin-desktop">
@@ -138,21 +184,18 @@ export default function AdminDashboard() {
           <div className="max-w-container-max mx-auto min-h-[600px]">
             {formSubmitted ? (
               <motion.div
-                className="flex flex-col items-center justify-center w-full min-h-[500px] bg-surface-container-lowest rounded-xl soft-shadow border border-surface-container"
+                className="flex flex-col items-center justify-center w-full min-h-[300px] bg-surface-container-lowest rounded-xl soft-shadow border border-surface-container"
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
               >
                 <span
-                  className="material-symbols-outlined text-[72px] text-green-500"
+                  className="material-symbols-outlined text-[48px] text-green-500"
                   style={{ fontVariationSettings: "'FILL' 1" }}
                 >
                   check_circle
                 </span>
-                <h2 className="font-headline-md text-headline-md text-primary font-semibold mt-4">
-                  Order Submitted Successfully
-                </h2>
-                <p className="font-body-lg text-body-lg text-on-surface-variant mt-2 mb-8">
+                <p className="font-body-lg text-body-lg text-on-surface-variant mt-4 mb-6">
                   Your order has been received and is being processed.
                 </p>
                 <button
@@ -164,13 +207,6 @@ export default function AdminDashboard() {
                 >
                   <span className="material-symbols-outlined text-[20px]">add_circle</span>
                   <span>Click for New Order</span>
-                </button>
-                <button
-                  onClick={() => window.location.reload()}
-                  className="flex items-center gap-2 bg-secondary/10 text-secondary px-8 py-4 rounded-DEFAULT font-button text-button uppercase tracking-wider transition-all hover:bg-secondary/20 active:scale-95 cursor-pointer border border-secondary/20"
-                >
-                  <span className="material-symbols-outlined text-[20px]">refresh</span>
-                  <span>Refresh Page</span>
                 </button>
               </motion.div>
             ) : (
